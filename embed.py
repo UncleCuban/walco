@@ -17,7 +17,7 @@ def welcome_embed():
     )
     embed.add_field(
         name='Commands',
-        value='`/setup` **(admin only)** - Set the specific variables of your collector bot\n`/wallet-collector` - Submit your SEI wallet to be collected\n`/wallet-checker` - Check the wallet you submitted\n`/wallet-editor` - Edit the wallet you submitted',
+        value='`/setup` **(admin only)** - Set the specifics of your collector bot\n`/wallet-collector` - Submit your SEI wallet to be collected\n`/wallet-checker` - Check the wallet you submitted\n`/wallet-editor` - Edit the wallet you submitted',
         inline=False
     )
     embed.add_field(
@@ -25,7 +25,7 @@ def welcome_embed():
         value='For any questions or claims, please contact the bot developer: [@UncleCuban](<https://x.com/unclecuban>)',
         inline=False
     )
-    embed.set_image('/resources/avatar/WALCO_banner.png')
+    embed.set_image(url='https://github.com/UncleCuban/walco/blob/main/resources/avatar/WALCO_banner.png?raw=true')
     embed.set_footer(
         text='WALCO - Wallet Collection Bot... Enjoy!'
     )

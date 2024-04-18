@@ -12,12 +12,16 @@ creds = Credentials.from_service_account_file(CREDS_FILE_PATH, scopes=SCOPES)
 client = gspread.authorize(creds)
 
 sheet = None
-
+guild = None
+def get_guild_name(guild_name):
+    global guild
+    guild = guild_name
+    
 def initialize_sheet(file_id, worksheet_name):
     global sheet
     try:
         sheet = client.open_by_key(file_id).worksheet(worksheet_name)
-        print('Sheet initialized successfully\nSheet:', sheet.title)
+        print(f'Setup initialized successfully in {guild}\nSheet: {sheet.title}')
         return True
     except Exception as e:
         print(f"Error initializing sheet: {type(e).__name__}, {e}")

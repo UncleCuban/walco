@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import find_dotenv, load_dotenv
-from file_access import initialize_sheet, append_to_file, find_user_on_file, update_user_wallet, get_user_ids, get_current_wallets
+from file_access import initialize_sheet, append_to_file, find_user_on_file, update_user_wallet, get_user_ids, get_current_wallets, get_guild_name
 from embed import welcome_embed
 
 dotenv_path = find_dotenv()
@@ -25,8 +25,8 @@ async def on_ready():
         print(f'Synced {len(synced)} command(s)')
     except Exception as e:
         print(e)
-#     users_who_submitted_wallets.update(get_user_ids())
-#     current_wallets.update(get_current_wallets())
+    users_who_submitted_wallets.update(get_user_ids())
+    current_wallets.update(get_current_wallets())
 
 @bot.tree.command(name='info', description='Get all the information you need about your wallet collection bot')
 @discord.app_commands.checks.has_permissions(administrator=True)
@@ -34,28 +34,33 @@ async def info(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send(embed=welcome_embed())
 
-# async def role_autocomplete(interaction: discord.Interaction, current: str):
-#     return [discord.app_commands.Choice(name=role.name, value=role.id) for role in interaction.guild.roles if current.lower() in role.name.lower()]
+# Monitoring role
+monitored_role = None
 
 # Commmand set the specifics of the wallet collection bot
 @bot.tree.command(name='setup', description='Set the specifics variables of your collector bot')
 @discord.app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(
-    file='Google Sheets File ID',
+    file='Google Sheets File ID, on the file URL, the ID is the string after `"https://docs.google.com/spreadsheets/d/"` and before the next `"/"`',
     sheet='Name of the sheet where you want the data to be stored',
-    log_roles='Do you want to record roles of the users who sumbit wallets?',
-    roles='(optional) Specify the roles to be recorded'
+    special_role='If you have an OG role and want to log who has it, select "True"',
+    role='(optional) Specify the role to be logged if special_role is enabled'
 )
 # @app_commands.autocomplete(roles=role_autocomplete)
-async def setup(interaction: discord.Interaction, file: str, sheet: str, log_roles: bool, roles: discord.Role = None):
+async def setup(interaction: discord.Interaction, file: str, sheet: str, special_role: bool, role: discord.Role = None):
     await interaction.response.defer(ephemeral=True)
-    if log_roles and roles is None:
+    get_guild_name(interaction.guild.name)
+    global monitored_role
+    if special_role and role is None:
         await interaction.followup.send('You chose to log roles, but did not specify which roles to log. Please provide the roles.')
         return
+    
+    monitored_role = role
+
     if initialize_sheet(file, sheet):
-        message = f'Setup initialized successfully with role-logging {"enabled" if log_roles else "disabled"}.'
-        if roles:
-            message += f' Monitoring roles: {roles.name}'
+        message = f'Setup initialized successfully with role-logging {"enabled" if special_role else "disabled"}.'
+        if role:
+            message += f' Monitoring role: `{monitored_role.name}`'
     else:
         message = 'There was an error initializing the bot.'
     await interaction.followup.send(message)
@@ -69,6 +74,10 @@ async def wallet_collector(interaction: discord.Interaction, wallet: str):
     # user data
     user_name = interaction.user.display_name
     user_id = str(interaction.user.id)
+    user_roles = interaction.user.roles
+
+    has_monitored_role = any(role == monitored_role for role in user_roles) if monitored_role else False
+    role_info = monitored_role.name if has_monitored_role else ''
     # requirements
     wallet_match = re.match(sei_wallet_regex, wallet)
 
@@ -76,17 +85,14 @@ async def wallet_collector(interaction: discord.Interaction, wallet: str):
         if user_id in users_who_submitted_wallets:
             message = 'You have already submitted your wallet, use command `/wallet-checker` to see if you sent the right one'
         else:
-            if len(users_who_submitted_wallets) <= 400: # Adjust for the desired cap on GTD mint spots
-                if wallet in current_wallets:
-                    message = 'This wallet is already registered'
-                else:
-                    if append_to_file(user_name, wallet, user_id):
-                        message = f'**Thank you for submitting your wallet, {interaction.user.display_name}!**\nCollected Wallet: `{wallet}`'
-                        users_who_submitted_wallets.add(user_id)
-                    else:
-                        message = 'There was an error collecting your wallet. Please contact a Core Team member.'
+            if wallet in current_wallets:
+                message = 'This wallet is already registered'
             else:
-                message = 'All GTD mint spots have been filled, should\'ve been faster, lol.'
+                if append_to_file(user_name, wallet, user_id, role_info):
+                    message = f'**Thank you for submitting your wallet, {interaction.user.display_name}!**\nCollected Wallet: `{wallet}`'
+                    users_who_submitted_wallets.add(user_id)
+                else:
+                    message = 'There was an error collecting your wallet. Please contact a Staff member.'
     else:
         message = 'The provided address is not a valid SEI wallet address. Please check and try again.'
     await interaction.followup.send(message)
