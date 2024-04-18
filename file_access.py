@@ -11,41 +11,29 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapi
 creds = Credentials.from_service_account_file(CREDS_FILE_PATH, scopes=SCOPES)
 client = gspread.authorize(creds)
 
-sheet = None
-guild = None
-def get_guild_name(guild_name):
-    global guild
-    guild = guild_name
-    
-def initialize_sheet(file_id, worksheet_name):
-    global sheet
+def append_to_file(file_id, sheet_name, *args):
     try:
-        sheet = client.open_by_key(file_id).worksheet(worksheet_name)
-        print(f'Setup initialized successfully in {guild}\nSheet: {sheet.title}')
-        return True
-    except Exception as e:
-        print(f"Error initializing sheet: {type(e).__name__}, {e}")
-        return False
-
-def append_to_file(*args):
-    global sheet
-    try:
+        sheet = client.open_by_key(file_id).worksheet(sheet_name)
         sheet.append_row([*args])
         print("Data appended successfuly")
         return True
     except Exception as e:
         print(f"Error appending data to Google Drive: {type(e).__name__}, {e}")
         return False
-def get_user_ids():
+    
+def get_user_ids(file_id, sheet_name):
+    sheet = client.open_by_key(file_id).worksheet(sheet_name)
     current_user_ids = sheet.col_values(3)
     return current_user_ids
-def get_current_wallets():
+
+def get_current_wallets(file_id, sheet_name):
+    sheet = client.open_by_key(file_id).worksheet(sheet_name)
     current_wallets_submitted = sheet.col_values(2)
     return current_wallets_submitted
 
-
-def find_user_on_file(user_id):
+def find_user_on_file(file_id, sheet_name, user_id):
     try:
+        sheet = client.open_by_key(file_id).worksheet(sheet_name)
         user_ids = sheet.col_values(3)
         row_number = user_ids.index(user_id) + 1
         row_data = sheet.row_values(row_number)
@@ -54,8 +42,9 @@ def find_user_on_file(user_id):
         print(f"Error finding user data: {type(e).__name__}, {e}")
         return False
     
-def update_user_wallet(user_id, new_wallet):
+def update_user_wallet(file_id, sheet_name, user_id, new_wallet):
     try:
+        sheet = client.open_by_key(file_id).worksheet(sheet_name)
         user_ids = sheet.col_values(3)  # Assuming the user_id is stored in the third column
         if user_id in user_ids:
             row_number = user_ids.index(user_id) + 1
